@@ -62,9 +62,6 @@ class ReturnCalculator:
             cycle_key = f'n-{cycle_index}'
             average_returns[cycle_key][f'Q{quarter}'].append(return_value)
 
-        # Print all cycles to debug
-        # for key, value in average_returns.items():
-        #     print(f"{key}: {value}")
         return average_returns
 
     def calculate_monthly_returns(self, ticker):
@@ -79,3 +76,19 @@ class ReturnCalculator:
         # Group by month and calculate average of returns
         monthly_returns = data.groupby('Month')['Return'].apply(lambda x: (1 + x).prod() - 1) * 100
         return monthly_returns.groupby(monthly_returns.index.month).agg(list)  # Group by month number and aggregate as list
+
+    def calculate_sma_and_difference(self, ticker: str, window: int = 30):
+        data = self.financial_data[ticker].get_data()
+        if data is None or data.empty:
+            return pd.DataFrame()  # Return empty DataFrame if no data available
+
+        # Define specific date range
+        start_date = '2021-06-28'
+        end_date = '2023-06-28'
+
+        # Filter data within this date range and calculate SMA and difference
+        data = data[(data.index >= pd.to_datetime(start_date)) & (data.index <= pd.to_datetime(end_date))]
+        data['SMA'] = data['Adj Close'].rolling(window=window).mean()
+        data['Difference to SMA'] = data['Adj Close'] - data['SMA']
+
+        return data

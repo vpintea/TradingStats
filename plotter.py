@@ -37,25 +37,6 @@ class Plotter:
 
         return self.plot_average_quarterly_returns(final_average_returns)
 
-    def get_average_monthly_returns(self):
-        """Retrieve average monthly returns for all tickers and prepare for plotting."""
-        months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-        monthly_aggregated_returns = {month: [] for month in months}
-
-        for ticker in self.return_calculator.tickers:
-            monthly_returns = self.return_calculator.calculate_monthly_returns(ticker)
-            if monthly_returns.empty:  # Correct way to check if a DataFrame or Series is empty
-                print(f"No data available for ticker {ticker}")
-                continue
-
-            for month in range(1, 13):  # Month indices from 1 to 12
-                if month in monthly_returns:  # Check if the month exists in the returns
-                    monthly_aggregated_returns[months[month-1]].extend(monthly_returns[month])
-
-        # Calculate average returns
-        final_average_returns = {month: np.mean(returns) if returns else 0 for month, returns in monthly_aggregated_returns.items()}
-        return self.plot_average_monthly_returns(final_average_returns)
-
     def plot_average_quarterly_returns(self, final_average_returns):
         """Plot average quarterly returns for every 4-year cycle leading up to an election year."""
         quarters = ['Q1', 'Q2', 'Q3', 'Q4']
@@ -103,6 +84,25 @@ class Plotter:
         file_path: str = f'Quarterly Charts/'
         plt.savefig(file_path + title + ".png")
         plt.show()
+
+    def get_average_monthly_returns(self):
+        """Retrieve average monthly returns for all tickers and prepare for plotting."""
+        months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        monthly_aggregated_returns = {month: [] for month in months}
+
+        for ticker in self.return_calculator.tickers:
+            monthly_returns = self.return_calculator.calculate_monthly_returns(ticker)
+            if monthly_returns.empty:  # Correct way to check if a DataFrame or Series is empty
+                print(f"No data available for ticker {ticker}")
+                continue
+
+            for month in range(1, 13):  # Month indices from 1 to 12
+                if month in monthly_returns:  # Check if the month exists in the returns
+                    monthly_aggregated_returns[months[month-1]].extend(monthly_returns[month])
+
+        # Calculate average returns
+        final_average_returns = {month: np.mean(returns) if returns else None for month, returns in monthly_aggregated_returns.items()}
+        return self.plot_average_monthly_returns(final_average_returns)
 
     def plot_average_monthly_returns(self, average_returns):
         """Plot the average monthly returns using data retrieved from get_average_monthly_returns."""
@@ -186,3 +186,100 @@ class Plotter:
         file_path: str = f'Semi-Monthly Charts/'
         plt.savefig(file_path + title +".png")
         plt.show()
+
+
+    def get_average_monthly_volatility(self):
+        """Retrieve average monthly volatility for all tickers and prepare for plotting."""
+        months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        monthly_aggregated_returns = {month: [] for month in months}
+
+        for ticker in self.return_calculator.tickers:
+            monthly_returns = self.return_calculator.calculate_monthly_returns(ticker)
+            if monthly_returns.empty:  # Correct way to check if a DataFrame or Series is empty
+                print(f"No data available for ticker {ticker}")
+                continue
+
+            for month in range(1, 13):  # Month indices from 1 to 12
+                if month in monthly_returns:  # Check if the month exists in the returns
+                    monthly_aggregated_returns[months[month-1]].extend(monthly_returns[month])
+
+        # Calculate average returns
+        final_average_returns = {month: np.std(returns) if returns else None for month, returns in monthly_aggregated_returns.items()}
+        return self.plot_average_monthly_volatility(final_average_returns)
+
+    def plot_average_monthly_volatility(self, average_returns):
+        """Plot the average monthly returns using data retrieved from get_average_monthly_returns."""
+        values = list(average_returns.values())
+        labels = list(average_returns.keys())
+        x = np.arange(len(values))
+
+        fig, ax = plt.subplots()
+        # Add a label here to be used in the legend
+        bars = ax.bar(x, values, alpha=0.7, label='Monthly Average Volatility')
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels, rotation=45)
+        ax.set_xlabel('Month')
+        ax.set_ylabel('Average Volatility (%)')
+
+        for bar in bars:
+            height = bar.get_height()
+            ax.annotate(f'{height:.2f}%', xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3), textcoords="offset points", ha='center', va='bottom')
+
+        date = self.return_calculator.earliest_data_year
+        ticker = self.return_calculator.tickers
+        title = f"{ticker[0].strip()} Average Monthly Volatility since {date}"
+        ax.set_title(title)
+        ax.set_ylabel('Average Volatility (%)')
+        plt.legend()
+        plt.tight_layout()
+        file_path: str = f'Monthly Charts/'
+        # plt.savefig(file_path + title + ".png")
+        plt.show()
+
+    def plot_price_sma_difference(self, window=30):
+        """
+        Plot the difference between the index prices and their exponential moving averages (EMA) for all tickers in the ReturnCalculator.
+        EMA is calculated using the entire dataset, but only data between 2021-06-28 and 2023-06-28 is displayed.
+
+        Parameters:
+        - window: integer, the window size for the moving average (default is 30 days)
+        """
+        for ticker in self.return_calculator.tickers:
+            data = self.return_calculator.financial_data[ticker].get_data()
+            if data.empty:
+                print(f"No data available for ticker {ticker}")
+                continue
+
+            # Calculate the exponential moving average over the entire dataset
+            data['EMA'] = data['Adj Close'].ewm(span=window, adjust=False).mean()
+
+            # Calculate the difference between price and EMA
+            data['Price-EMA Difference'] = data['Adj Close'] - data['EMA']
+
+            # Filter the data between June 28, 2021, and June 28, 2023, for plotting
+            filtered_data = data['2021-06-28':'2023-06-28']
+
+            # Plotting
+            fig, ax = plt.subplots(figsize=(12, 6))
+
+            # Plotting the price and EMA for the specified period
+            ax.plot(filtered_data['Adj Close'], color='limegreen', label='Index Price')
+            ax.plot(filtered_data['EMA'], color='mediumblue', label='Exponential Moving Average', linewidth=0.8)
+
+            ax.set_ylabel('Price / EMA')
+            ax.set_title(f'Index Price and EMA Comparison for {ticker}')
+
+            # Plotting the difference on a secondary axis
+            ax2 = ax.twinx()
+            ax2.plot(filtered_data['Price-EMA Difference'], color='blue', label='Price-EMA Difference', alpha=0.7)
+            ax2.set_ylabel('Price-EMA Difference')
+            ax2.axhline(0, color='black', linewidth=0.8, linestyle='--')
+
+            # Legends
+            lines, labels = ax.get_legend_handles_labels()
+            lines2, labels2 = ax2.get_legend_handles_labels()
+            ax.legend(lines + lines2, labels + labels2, loc='upper left')
+
+            plt.show()
+

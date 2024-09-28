@@ -92,3 +92,45 @@ class ReturnCalculator:
         data['Difference to SMA'] = data['Adj Close'] - data['SMA']
 
         return data
+
+    def calculate_weekly_momentum(self, ticker):
+        data = self.financial_data[ticker].get_data()
+        data.sort_index(inplace=True)
+        data['Weekly Momentum'] = data['Adj Close'].pct_change(periods=5) * 100  # Weekly
+        return data
+
+    def calculate_rsi(self, data, period=14):
+        change = data['Weekly Momentum']
+        gain = (change.where(change > 0, 0)).rolling(window=period).mean()
+        loss = (-change.where(change < 0, 0)).rolling(window=period).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        data['RSI'] = rsi
+        return data
+
+    # def calculate_rsi(self, ticker, period=14):
+    #     """Calculate the Relative Strength Index (RSI) for a given ticker over a specified period."""
+    #     data = self.financial_data[ticker].get_data()
+    #     if data.empty:
+    #         print(f"No data available for ticker {ticker}")
+    #         return pd.Series()
+    #
+    #     delta = data['Adj Close'].diff()
+    #     gain = (delta.where(delta > 0, 0)).fillna(0)
+    #     loss = (-delta.where(delta < 0, 0)).fillna(0)
+    #
+    #     avg_gain = gain.rolling(window=period, min_periods=1).mean()
+    #     avg_loss = loss.rolling(window=period, min_periods=1).mean()
+    #
+    #     rs = avg_gain / avg_loss
+    #     rsi = 100 - (100 / (1 + rs))
+    #
+    #     return rsi
+
+    def calculate_daily_returns(self, ticker: str):
+        data = self.financial_data[ticker].get_data()
+        if data is None or data.empty:
+            return pd.DataFrame()
+
+        # Return the Adjusted Close (Adj Close) price to plot the index price
+        return data[['Adj Close']].dropna()

@@ -13,7 +13,7 @@ class FinancialData:
     def download_data(self) -> pd.DataFrame:
         """Download historical data for the given ticker."""
         data = yf.download(self.ticker, start=self.start_date)
-        data = data[['Adj Close']]  # Keep only 'Adj Close' column
+        # data = data[['Adj Close', 'Volume']]  # Keep only 'Adj Close' column
         self.data = data.dropna()
         return self.data
 
